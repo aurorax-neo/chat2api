@@ -8,6 +8,7 @@
 
 - `POST /v1/chat/completions`：兼容 Chat Completions，请求支持普通 JSON 与 stream。
 - `POST /v1/responses`：兼容 Responses API 文本链路，请求支持普通 JSON 与 stream。
+- Responses 流会先发 `response.created` 和 `response.in_progress`，再推 `output_item.added` / `delta` / `completed`，更适合 CLI / Codex 这类依赖状态事件的客户端。
 - Function Calling：兼容 OpenAI `tools`/`tool_choice`、旧版 `functions`/`function_call`，支持多工具调用、工具结果回填与流式 tool calls。
 - `GET /v1/accTokens`：查看配置账号池可用数量。
 - 本地 `sk-` auth key：使用配置文件中的 `chatgpts` 账号池请求上游。
@@ -83,6 +84,14 @@ chatgpts:
 ```bash
 go run ./cmd
 ```
+
+## Web 管理
+
+服务启动后，可以打开 `http://<host>:<port>/admin` 管理 YAML 配置里的本地 API key、access token 直传前缀、全局代理，以及 `chatgpts` 账号池。
+
+- 管理 API 只接受配置文件中的 `auth.access_tokens` 作为登录密钥，不接受 `access_token_prefix` 直传 token。
+- 页面不会回显真实 token，已保存的密钥只显示遮罩值；输入框留空会保留原值，填新值才会覆盖。
+- 保存时会先写出 `conf/app.<ENV>.yaml.bak` 备份，再更新当前 `conf/app.<ENV>.yaml`。本地和 Docker 运行时配置监听器会重载账号池；serverless/Vercel 环境不支持在页面中写回配置文件。
 
 指定环境运行，例如读取 `conf/app.prod.yaml`：
 

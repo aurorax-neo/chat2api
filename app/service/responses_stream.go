@@ -17,9 +17,15 @@ func streamResponsesTextEvents(c *gin.Context, model string, resp *http.Response
 	if _, err := c.Writer.WriteString(responses.SSE(responses.CreatedEvent(responseID, model, created))); err != nil {
 		return nil, err
 	}
-	item := responses.TextOutputItem("", "", "in_progress")
-	item.ID = itemID
-	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.added", OutputIndex: 0, Item: &item})); err != nil {
+	if _, err := c.Writer.WriteString(responses.SSE(responses.InProgressEvent(responseID, model, created))); err != nil {
+		return nil, err
+	}
+	item := responses.TextOutputItemStarted(itemID)
+	if _, err := c.Writer.WriteString(responses.SSE(responses.OutputItemAddedEvent(responseID, 0, &item))); err != nil {
+		return nil, err
+	}
+	part := responses.ContentPart{Type: "output_text", Text: "", Annotations: []interface{}{}}
+	if _, err := c.Writer.WriteString(responses.SSE(responses.ContentPartAddedEvent(responseID, itemID, 0, 0, part))); err != nil {
 		return nil, err
 	}
 	c.Writer.Flush()
@@ -27,7 +33,7 @@ func streamResponsesTextEvents(c *gin.Context, model string, resp *http.Response
 		if event.Delta == "" {
 			return nil
 		}
-		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_text.delta", ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Delta: event.Delta})); err != nil {
+		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_text.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Delta: event.Delta})); err != nil {
 			return err
 		}
 		c.Writer.Flush()
@@ -36,11 +42,15 @@ func streamResponsesTextEvents(c *gin.Context, model string, resp *http.Response
 	if err != nil {
 		return nil, err
 	}
-	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_text.done", ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Text: result.Content})); err != nil {
+	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_text.done", ResponseID: responseID, ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Text: result.Content})); err != nil {
+		return nil, err
+	}
+	donePart := responses.ContentPart{Type: "output_text", Text: result.Content, Annotations: []interface{}{}}
+	if _, err := c.Writer.WriteString(responses.SSE(responses.ContentPartDoneEvent(responseID, itemID, 0, 0, donePart))); err != nil {
 		return nil, err
 	}
 	completedItem := responses.TextOutputItem(itemID, result.Content, "completed")
-	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.done", OutputIndex: 0, Item: &completedItem})); err != nil {
+	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_item.done", ResponseID: responseID, OutputIndex: 0, Item: &completedItem})); err != nil {
 		return nil, err
 	}
 	if _, err := c.Writer.WriteString(responses.SSE(responses.CompletedEvent(responseID, model, created, []responses.OutputItem{completedItem}))); err != nil {
@@ -57,6 +67,9 @@ func streamResponsesFunctionCallingEvents(c *gin.Context, apiReq *completions.Ap
 	itemID := responses.MessageID()
 	created := time.Now().Unix()
 	if _, err := c.Writer.WriteString(responses.SSE(responses.CreatedEvent(responseID, apiReq.Model, created))); err != nil {
+		return nil, err
+	}
+	if _, err := c.Writer.WriteString(responses.SSE(responses.InProgressEvent(responseID, apiReq.Model, created))); err != nil {
 		return nil, err
 	}
 	c.Writer.Flush()
@@ -99,14 +112,13 @@ func streamResponsesFunctionCallingEvents(c *gin.Context, apiReq *completions.Ap
 		detected, content := detector.ProcessChunk(event.Delta)
 		if content != "" {
 			if !textItemStarted {
-				item := responses.TextOutputItem("", "", "in_progress")
-				item.ID = itemID
-				if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.added", ResponseID: responseID, OutputIndex: 0, Item: &item})); err != nil {
+				item := responses.TextOutputItemStarted(itemID)
+				if _, err := c.Writer.WriteString(responses.SSE(responses.OutputItemAddedEvent(responseID, 0, &item))); err != nil {
 					return err
 				}
 				textItemStarted = true
 			}
-			if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_text.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Delta: content})); err != nil {
+			if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_text.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Delta: content})); err != nil {
 				return err
 			}
 			c.Writer.Flush()
@@ -151,14 +163,13 @@ func streamResponsesFunctionCallingEvents(c *gin.Context, apiReq *completions.Ap
 		}
 	} else if text := detector.FlushText(); text != "" {
 		if !textItemStarted {
-			item := responses.TextOutputItem("", "", "in_progress")
-			item.ID = itemID
-			if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.added", ResponseID: responseID, OutputIndex: 0, Item: &item})); err != nil {
+			item := responses.TextOutputItemStarted(itemID)
+			if _, err := c.Writer.WriteString(responses.SSE(responses.OutputItemAddedEvent(responseID, 0, &item))); err != nil {
 				return nil, err
 			}
 			textItemStarted = true
 		}
-		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_text.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Delta: text})); err != nil {
+		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_text.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: 0, ContentIndex: 0, Delta: text})); err != nil {
 			return nil, err
 		}
 	}
@@ -181,11 +192,15 @@ func streamResponsesFunctionCallingEvents(c *gin.Context, apiReq *completions.Ap
 }
 
 func finishResponsesTextItem(c *gin.Context, responseID string, itemID string, outputIndex int, text string) (responses.OutputItem, error) {
-	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_text.done", ResponseID: responseID, ItemID: itemID, OutputIndex: outputIndex, ContentIndex: 0, Text: text})); err != nil {
+	donePart := responses.ContentPart{Type: "output_text", Text: text, Annotations: []interface{}{}}
+	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_text.done", ResponseID: responseID, ItemID: itemID, OutputIndex: outputIndex, ContentIndex: 0, Text: text})); err != nil {
+		return responses.OutputItem{}, err
+	}
+	if _, err := c.Writer.WriteString(responses.SSE(responses.ContentPartDoneEvent(responseID, itemID, outputIndex, 0, donePart))); err != nil {
 		return responses.OutputItem{}, err
 	}
 	completedItem := responses.TextOutputItem(itemID, text, "completed")
-	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.done", ResponseID: responseID, OutputIndex: outputIndex, Item: &completedItem})); err != nil {
+	if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_item.done", ResponseID: responseID, OutputIndex: outputIndex, Item: &completedItem})); err != nil {
 		return responses.OutputItem{}, err
 	}
 	return completedItem, nil
@@ -198,17 +213,17 @@ func writeResponsesToolCallEvents(c *gin.Context, responseID string, model strin
 		outputIndex := startIndex + i
 		itemID := responses.MessageID()
 		item := responses.FunctionCallOutputItem(itemID, toolCall.ID, toolCall.Function.Name, "", "in_progress")
-		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.added", ResponseID: responseID, OutputIndex: outputIndex, Item: &item})); err != nil {
+		if _, err := c.Writer.WriteString(responses.SSE(responses.OutputItemAddedEvent(responseID, outputIndex, &item))); err != nil {
 			return err
 		}
-		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.function_call_arguments.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: outputIndex, Delta: toolCall.Function.Arguments})); err != nil {
+		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.function_call_arguments.delta", ResponseID: responseID, ItemID: itemID, OutputIndex: outputIndex, Delta: toolCall.Function.Arguments})); err != nil {
 			return err
 		}
-		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.function_call_arguments.done", ResponseID: responseID, ItemID: itemID, OutputIndex: outputIndex, Arguments: toolCall.Function.Arguments})); err != nil {
+		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.function_call_arguments.done", ResponseID: responseID, ItemID: itemID, OutputIndex: outputIndex, Arguments: toolCall.Function.Arguments})); err != nil {
 			return err
 		}
 		completed := responses.FunctionCallOutputItem(itemID, toolCall.ID, toolCall.Function.Name, toolCall.Function.Arguments, "completed")
-		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{Type: "response.output_item.done", ResponseID: responseID, OutputIndex: outputIndex, Item: &completed})); err != nil {
+		if _, err := c.Writer.WriteString(responses.SSE(responses.Event{EventID: responses.EventID(), Type: "response.output_item.done", ResponseID: responseID, OutputIndex: outputIndex, Item: &completed})); err != nil {
 			return err
 		}
 		output = append(output, completed)

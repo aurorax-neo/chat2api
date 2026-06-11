@@ -40,6 +40,21 @@ func V1Auth(c *gin.Context) {
 	c.Next()
 }
 
+func AdminAuth(c *gin.Context) {
+	authToken := c.Request.Header.Get("Authorization")
+	localToken := strings.TrimSpace(strings.TrimPrefix(authToken, "Bearer "))
+	if authToken == "" || localToken == "" {
+		common.ErrorResponse(c, 401, "Admin API requires a configured local API key.", nil)
+		return
+	}
+	appConf := conf.GetApp()
+	if len(appConf.Auth.AccessTokens) == 0 || !common.IsStrInArray(localToken, appConf.Auth.AccessTokens) {
+		common.ErrorResponse(c, 401, "Incorrect admin API key.", nil)
+		return
+	}
+	c.Next()
+}
+
 func missingAPIKeyMessage(hasAccessTokenPrefix bool) string {
 	if hasAccessTokenPrefix {
 		return "You didn't provide an API key. Use Authorization: Bearer <local-api-key>, or Authorization: Bearer <configured-prefix><real_access_token> for access_token_prefix mode."

@@ -12,3 +12,7 @@ func ResponseID() string {
 func MessageID() string {
 	return fmt.Sprintf("msg_%d", time.Now().UnixNano())
 }
+
+func EventID() string {
+	return fmt.Sprintf("evt_%d", time.Now().UnixNano())
+}

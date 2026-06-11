@@ -199,19 +199,11 @@ func isPublicCodexResponseEvent(payload string) bool {
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
 		return false
 	}
-	switch responseStringValue(event["type"], "") {
-	case "response.created",
-		"response.output_item.added",
-		"response.output_text.delta",
-		"response.output_text.done",
-		"response.output_item.done",
-		"response.completed",
-		"response.failed",
-		"response.incomplete":
+	eventType := responseStringValue(event["type"], "")
+	if eventType == "rate_limits.updated" {
 		return true
-	default:
-		return false
 	}
+	return strings.HasPrefix(eventType, "response.")
 }
 
 func collectCodexResponse(body io.Reader) (map[string]interface{}, error) {

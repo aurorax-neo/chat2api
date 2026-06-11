@@ -378,6 +378,7 @@ func setMappingChild(root *yaml.Node, key string, value *yaml.Node) {
 func Init(ctx context.Context) func(context.Context) {
 	wd, _ := os.Getwd()
 	path := filepath.Join(wd, "conf", fmt.Sprintf("app.%s.yaml", env.Curr))
+	setActiveConfigPath(path)
 	if err := ensureConfigFile(ctx, path, env.Curr); err != nil {
 		logx.WithContext(ctx).Fatalf("generate config failed: %+v", err)
 	}
@@ -410,6 +411,7 @@ func Init(ctx context.Context) func(context.Context) {
 }
 
 func InitServerless(ctx context.Context) func(context.Context) {
+	setActiveConfigPath("")
 	next := defaultGeneratedApp(env.Curr)
 	if path := strings.TrimSpace(os.Getenv("VERCEL_CONFIG_FILE")); path != "" {
 		if !filepath.IsAbs(path) {

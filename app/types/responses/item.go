@@ -43,6 +43,15 @@ func TextOutputItem(id string, text string, status string) OutputItem {
 	}
 }
 
+func TextOutputItemStarted(id string) OutputItem {
+	return OutputItem{
+		ID:     id,
+		Type:   "message",
+		Status: "in_progress",
+		Role:   "assistant",
+	}
+}
+
 func FunctionCallOutputItem(id string, callID string, name string, arguments string, status string) OutputItem {
 	return OutputItem{
 		ID:        id,
