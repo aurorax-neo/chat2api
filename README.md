@@ -105,6 +105,23 @@ Docker Compose：
 docker compose up -d
 ```
 
+### Linux 升级
+
+已经装过旧版本时，通常这样更新：
+
+```bash
+# Docker Compose
+docker compose pull
+docker compose up -d
+```
+
+```bash
+# 二进制部署
+# 停掉旧进程后，替换成最新发布版二进制，再启动
+```
+
+升级时保留 `conf/` 和 `logs/` 即可，配置和日志都在挂载卷里。若是源码运行，更新后重启进程最稳。
+
 Vercel 运行时不会写入配置文件，也不会默认读取仓库里的 `conf/app.dev.yaml`，避免把本地代理或本地账号配置带到云端。下面这些业务环境变量只在 Vercel/serverless 初始化时读取；本地运行和 Docker Compose 仍以 YAML 配置为准。
 
 请在 Vercel 环境变量中配置：
