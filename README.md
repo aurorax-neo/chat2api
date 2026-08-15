@@ -449,4 +449,4 @@ CDN acceleration and security protection for this project are sponsored by Tence
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=aurorax-neo/chat2api&type=Date)](https://star-history.com/#aurorax-neo/chat2api&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=aurorax-neo/chat2api&type=Date)](https://star-history.dera.page/#aurorax-neo/chat2api&Date)
